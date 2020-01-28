@@ -55,7 +55,6 @@ extension UnitBezier {
 
 // Ported to Swift from WebCore:
 // http://opensource.apple.com/source/WebCore/WebCore-955.66/platform/graphics/UnitBezier.h
-
 /*
 * Copyright (C) 2008 Apple Inc. All Rights Reserved.
 *

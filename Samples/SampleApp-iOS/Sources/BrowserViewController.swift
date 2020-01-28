@@ -1,5 +1,6 @@
 import UIKit
 import Advance
+import SwiftUI
 
 private final class DemoItem: BrowserItem {
     let viewController: DemoViewController
@@ -8,6 +9,8 @@ private final class DemoItem: BrowserItem {
         super.init()
     }
 }
+
+extension CGFloat: Animatable {}
 
 final class BrowserViewController: UIViewController {
     

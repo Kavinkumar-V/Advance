@@ -1,3 +1,5 @@
+import SwiftUI
+
 /// `Simulation` simulates changes to a value over time, based on
 /// a function that calculates acceleration after each time step.
 ///
@@ -10,14 +12,12 @@
 /// up" to the outside time. It then uses linear interpolation to match the
 /// internal state to the required external time in order to return the most
 /// precise calculations.
-struct Simulation<Value: VectorConvertible> {
-    
+struct Simulation<Value: Animatable> {
 
-    
     /// The function driving the simulation.
     private var function: AnySimulationFunction<Value> {
         didSet {
-            // If the function changes, we need to make sure that its new state 
+            // If the function changes, we need to make sure that its new state
             // will allow the simulation to converge.
             hasConverged = false
             convergeIfPossible()
@@ -32,20 +32,20 @@ struct Simulation<Value: VectorConvertible> {
     fileprivate (set) var hasConverged: Bool = false
     
     // The current state of the solver.
-    private var current: (value: Value.Vector, velocity: Value.Vector)
+    private var current: (value: Value, velocity: Value)
     
     // The latest interpolated state that we use to return values to the outside
     // world.
-    private var interpolated: (value: Value.Vector, velocity: Value.Vector)
+    private var interpolated: (value: Value, velocity: Value)
     
     /// Creates a new `DynamicSolver` instance.
     ///
     /// - parameter function: The function that will drive the simulation.
     /// - parameter value: The initial value of the simulation.
     /// - parameter velocity: The initial velocity of the simulation.
-    init<T>(function: T, initialValue: Value, initialVelocity: Value = .zero) where T: SimulationFunction, T.Value == Value {
+    init<T>(function: T, initialValue: Value, initialVelocity: Value) where T: SimulationFunction, T.Value == Value {
         self.function = AnySimulationFunction(function)
-        current = (value: initialValue.vector, velocity: initialVelocity.vector)
+        current = (value: initialValue, velocity: initialVelocity)
         interpolated = current
         convergeIfPossible()
     }
@@ -53,12 +53,12 @@ struct Simulation<Value: VectorConvertible> {
     fileprivate mutating func convergeIfPossible() {
         guard hasConverged == false else { return }
         
-        switch function.convergence(value: current.value, velocity: current.velocity) {
+        switch function.convergence(value: current.value.animatableData, velocity: current.velocity.animatableData) {
         case .keepRunning:
             break
         case .converge(let convergedValue):
-            current.value = convergedValue
-            current.velocity = .zero
+            current.value.animatableData = convergedValue
+            current.velocity.animatableData = .zero
             interpolated = current
             hasConverged = true
         }
@@ -67,6 +67,8 @@ struct Simulation<Value: VectorConvertible> {
     
     mutating func use<T>(function: T) where T: SimulationFunction, T.Value == Value {
         self.function = AnySimulationFunction(function)
+        self.hasConverged = false
+        convergeIfPossible()
     }
     
     /// Advances the simulation.
@@ -112,17 +114,25 @@ struct Simulation<Value: VectorConvertible> {
             // will let us provide a more accurate value to the outside world,
             // while maintaining a consistent time step internally.
             let alpha = Double((simulationFrameDuration + timeAccumulator) / simulationFrameDuration)
-            interpolated.value = interpolate(from: previous.value, to: current.value, alpha: alpha)
-            interpolated.velocity = interpolate(from: previous.velocity, to: current.velocity, alpha: alpha)
+            interpolated.value.animatableData = interpolate(
+                from: previous.value.animatableData,
+                to: current.value.animatableData,
+                alpha: alpha)
+            interpolated.velocity.animatableData = interpolate(
+                from: previous.velocity.animatableData,
+                to: current.velocity.animatableData,
+                alpha: alpha)
         }
     }
     
     /// The current value.
     var value: Value {
-        get { return Value(vector: interpolated.value) }
+        get {
+            interpolated.value
+        }
         set {
-            interpolated.value = newValue.vector
-            current.value = newValue.vector
+            interpolated.value = newValue
+            current.value = newValue
             hasConverged = false
             convergeIfPossible()
         }
@@ -130,10 +140,12 @@ struct Simulation<Value: VectorConvertible> {
     
     /// The current velocity.
     var velocity: Value {
-        get { return Value(vector: interpolated.velocity) }
+        get {
+            interpolated.velocity
+        }
         set {
-            interpolated.velocity = newValue.vector
-            current.velocity = newValue.vector
+            interpolated.velocity = newValue
+            current.velocity = newValue
             hasConverged = false
             convergeIfPossible()
         }
@@ -141,23 +153,22 @@ struct Simulation<Value: VectorConvertible> {
 }
 
 
-fileprivate struct AnySimulationFunction<Value>: SimulationFunction where Value: VectorConvertible {
+fileprivate struct AnySimulationFunction<Value>: SimulationFunction where Value: Animatable {
     
-    private let _acceleration: (Value.Vector, Value.Vector) -> Value.Vector
-    private let _convergence: (Value.Vector, Value.Vector) -> Convergence<Value>
+    private let _acceleration: (Value.AnimatableData, Value.AnimatableData) -> Value.AnimatableData
+    private let _convergence: (Value.AnimatableData, Value.AnimatableData) -> Convergence<Value>
     
     public init<T: SimulationFunction>(_ wrapped: T) where T.Value == Value {
         _acceleration = wrapped.acceleration
         _convergence = wrapped.convergence
     }
     
-    public func acceleration(value: Value.Vector, velocity: Value.Vector) -> Value.Vector {
+    public func acceleration(value: Value.AnimatableData, velocity: Value.AnimatableData) -> Value.AnimatableData {
         return _acceleration(value, velocity)
     }
     
-    public func convergence(value: Value.Vector, velocity: Value.Vector) -> Convergence<Value> {
+    public func convergence(value: Value.AnimatableData, velocity: Value.AnimatableData) -> Convergence<Value> {
         return _convergence(value, velocity)
     }
     
 }
-

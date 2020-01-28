@@ -1,6 +1,7 @@
 import Foundation
 import CoreGraphics
 import Advance
+import SwiftUI
 
 struct SimpleTransform {
     var scale: CGFloat = 1.0
@@ -19,17 +20,22 @@ struct SimpleTransform {
         t = t.scaledBy(x: scale, y: scale)
         return t
     }
+    
+    static var zero: SimpleTransform {
+        SimpleTransform(scale: 0.0, rotation: 0.0)
+    }
 }
 
-extension SimpleTransform: VectorConvertible {
+extension SimpleTransform: Animatable {
         
-    var vector: AnimatablePair<CGFloat, CGFloat> {
-        AnimatablePair(first: scale, second: rotation)
-    }
-    
-    init(vector: AnimatablePair<CGFloat, CGFloat>) {
-        scale = vector.first
-        rotation = vector.second
+    var animatableData: AnimatablePair<CGFloat, CGFloat> {
+        get {
+            AnimatablePair(scale, rotation)
+        }
+        set {
+            scale = newValue.first
+            rotation = newValue.second
+        }
     }
 
 }

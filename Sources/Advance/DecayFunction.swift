@@ -1,5 +1,7 @@
+import SwiftUI
+
 /// Gradually reduces velocity until it equals `Vector.zero`.
-public struct DecayFunction<T>: SimulationFunction where T: VectorConvertible {
+public struct DecayFunction<T>: SimulationFunction where T: Animatable {
     
     /// How close to 0 each component of the velocity must be before the
     /// simulation is allowed to converge.
@@ -15,13 +17,13 @@ public struct DecayFunction<T>: SimulationFunction where T: VectorConvertible {
     }
     
     /// Calculates acceleration for a given state of the simulation.
-    public func acceleration(value: T.Vector, velocity: T.Vector) -> T.Vector {
+    public func acceleration(value: T.AnimatableData, velocity: T.AnimatableData) -> T.AnimatableData {
         var accel = velocity
         accel.scale(by: -drag)
         return accel
     }
     
-    public func convergence(value: T.Vector, velocity: T.Vector) -> Convergence<T> {
+    public func convergence(value: T.AnimatableData, velocity: T.AnimatableData) -> Convergence<T> {
         if velocity.magnitudeSquared < threshold*threshold {
             return .converge(atValue: value)
         } else {

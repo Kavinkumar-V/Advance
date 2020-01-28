@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// Manages the application of animations to a value.
 ///
@@ -18,7 +19,7 @@ import Foundation
 /// sizeAnimator.decay(drag: 2.0)
 /// ```
 ///
-public final class Animator<Value: VectorConvertible> {
+public final class Animator<Value: Animatable> {
     
     /// Called every time the animator's `value` changes.
     public var onChange: ((Value) -> Void)? = nil {
@@ -33,7 +34,7 @@ public final class Animator<Value: VectorConvertible> {
         didSet {
             dispatchPrecondition(condition: .onQueue(.main))
             displayLink.isPaused = state.isAtRest
-            if state.value != oldValue.value {
+            if state.value.animatableData != oldValue.value.animatableData {
                 onChange?(state.value)
             }
         }
@@ -143,7 +144,10 @@ extension Animator {
         
         var velocity: Value {
             switch self {
-            case .atRest(_): return .zero
+            case .atRest(let value):
+                var result = value
+                result.animatableData.scale(by: 0.0)
+                return result
             case .animating(let animation): return animation.velocity
             case .simulating(let simulation): return simulation.velocity
             }
